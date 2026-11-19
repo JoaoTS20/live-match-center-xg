@@ -153,6 +153,7 @@ activemq-data/
 .env
 .envrc
 .venv
+.DS_Store
 env/
 venv/
 ENV/
@@ -221,3 +222,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Java / Maven
+target/
+*.jar
+.idea/
+*.iml
+
+# Node / Frontend
+node_modules/
+dist/
+.angular/
+
