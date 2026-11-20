@@ -27,6 +27,22 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
-  
+  match-service:
+    build:
+      context: ./match-service
+      dockerfile: Dockerfile
+    container_name: match-service
+    ports:
+      - "8080:8080"
+    environment:
+      # Override localhost -> Docker network service names
+      SPRING_DATASOURCE_URL: jdbc:postgresql://match-postgres:5432/matchdb
+      SPRING_DATASOURCE_USERNAME: matchuser
+      SPRING_DATASOURCE_PASSWORD: matchpass
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: match-kafka:29092
+    depends_on:
+      - postgres
+      - kafka
+
 volumes:
   postgres_data:
