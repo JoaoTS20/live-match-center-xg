@@ -1,4 +1,4 @@
-package com.livematch.match_service;
+package com.livematch.matchservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
