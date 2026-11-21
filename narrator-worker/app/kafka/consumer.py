@@ -29,6 +29,8 @@ async def consume_events() -> None:
 
     try:
         async for msg in consumer:
+            if msg.value is None:
+                continue
             try:
                 raw_payload = json.loads(msg.value.decode("utf-8"))
                 event = MatchEvent.model_validate(raw_payload)
@@ -47,7 +49,12 @@ async def consume_events() -> None:
                 continue
             if event.event_type in ("SHOT", "GOAL"):
                 xg = calculate_xg(event.x, event.y)
-                commentary = await generate_commentary(event, xg)
+                try:
+                    commentary = await generate_commentary(event, xg)
+                except Exception as exc:
+                    logger.error("Failed to generate commentary for %s: %s", event.id, exc)
+                    commentary = f"{event.minute}' {event.player_name} ({event.team}) — {event.event_type} (xG: {xg:.2f})" 
+                    
                 logger.info(
                     "\n[%s] %d' %s (%s) | xG: %.4f\n🎙️  %s",
                     event.match_id,
@@ -58,7 +65,14 @@ async def consume_events() -> None:
                     commentary,
                 )
             else:
-                logger.debug("Ignored non-shot event: %s", event.event_type)
+                logger.debug(
+                    "Ignored non-shot event [%s] %d' %s (%s) — %s",
+                    event.match_id,
+                    event.minute,
+                    event.player_name,
+                    event.team,
+                    event.event_type,
+                    )
     except asyncio.CancelledError:
         logger.info("Kafka consumer task cancelled. Shutting down...")
         raise
