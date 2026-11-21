@@ -12,6 +12,11 @@ services:
       POSTGRES_PASSWORD: matchpass
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matchuser -d matchdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   kafka:
     image: apache/kafka:3.8.0
     container_name: match-kafka
@@ -39,10 +44,31 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://match-postgres:5432/matchdb
       SPRING_DATASOURCE_USERNAME: matchuser
       SPRING_DATASOURCE_PASSWORD: matchpass
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: match-kafka:29092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  narrator-worker:
+    build:
+      context: ./narrator-worker
+      dockerfile: Dockerfile
+    container_name: narrator-worker
+    ports:
+      - "8001:8001"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC: match-events
+      KAFKA_GROUP_ID: narrator-worker-group
+      MATCH_SERVICE_URL: http://match-service:8080
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
       - kafka
+      - match-service
+    restart: unless-stopped
 
 volumes:
   postgres_data:
