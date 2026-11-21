@@ -58,13 +58,13 @@ async def generate_commentary(event: MatchEvent, xg: float) -> str:
         f"Generate live commentary for this moment."
     )
 
-    response = await client.aio.models.generate_content(
+    chat = client.aio.chats.create(
         model=settings.gemini_model,
-        contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_INSTRUCTION,
             tools=[get_match_history],
             temperature=0.7,
         ),
     )
+    response = await chat.send_message(prompt)
     return (response.text or "").strip()
