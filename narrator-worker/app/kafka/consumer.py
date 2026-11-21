@@ -6,6 +6,8 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.schemas.event import MatchEvent
+from app.services.xg_model import calculate_xg
+from app.services.narrator import generate_commentary
 
 logger = logging.getLogger("narrator-worker")
 
@@ -42,6 +44,21 @@ async def consume_events() -> None:
                 )
             except (json.JSONDecodeError, ValidationError) as exc:
                 logger.warning("Skipping invalid message: %s", exc)
+                continue
+            if event.event_type in ("SHOT", "GOAL"):
+                xg = calculate_xg(event.x, event.y)
+                commentary = await generate_commentary(event, xg)
+                logger.info(
+                    "\n[%s] %d' %s (%s) | xG: %.4f\n🎙️  %s",
+                    event.match_id,
+                    event.minute,
+                    event.player_name,
+                    event.team,
+                    xg,
+                    commentary,
+                )
+            else:
+                logger.debug("Ignored non-shot event: %s", event.event_type)
     except asyncio.CancelledError:
         logger.info("Kafka consumer task cancelled. Shutting down...")
         raise
