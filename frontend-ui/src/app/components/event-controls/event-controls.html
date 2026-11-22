@@ -1,0 +1,37 @@
+<form class="controls-form" (ngSubmit)="onSubmit()">
+  <div class="fields">
+    <label>
+      Match ID
+      <input name="matchId" [(ngModel)]="matchId" required />
+    </label>
+
+    <label>
+      Team
+      <input name="team" [(ngModel)]="team" required />
+    </label>
+
+    <label>
+      Player
+      <input name="playerName" [(ngModel)]="playerName" required />
+    </label>
+
+    <label>
+      Event
+      <select name="eventType" [(ngModel)]="eventType">
+        <option value="SHOT">SHOT</option>
+        <option value="GOAL">GOAL</option>
+        <option value="PASS">PASS</option>
+        <option value="FOUL">FOUL</option>
+      </select>
+    </label>
+
+    <label>
+      Minute
+      <input type="number" name="minute" [(ngModel)]="minute" min="1" max="120" required />
+    </label>
+  </div>
+
+  <button type="submit" [disabled]="sending()">
+    {{ sending() ? 'Sending...' : 'Send Match Event' }}
+  </button>
+</form>
