@@ -5,7 +5,8 @@ from aiokafka import AIOKafkaConsumer
 from pydantic import ValidationError
 
 from app.core.config import settings
-from app.schemas.event import MatchEvent
+from app.kafka.producer import CommentaryProducer
+from app.schemas.event import MatchEvent, MatchCommentary
 from app.services.xg_model import calculate_xg
 from app.services.narrator import generate_commentary
 
@@ -13,13 +14,21 @@ logger = logging.getLogger("narrator-worker")
 
 
 async def consume_events() -> None:
+    producer = CommentaryProducer()
     consumer = AIOKafkaConsumer(
         settings.kafka_topic,
         bootstrap_servers=settings.kafka_bootstrap_servers,
         group_id=settings.kafka_group_id,
         auto_offset_reset="earliest",
     )
+
     await consumer.start()
+    try:
+        await producer.start()
+    except Exception:
+        await consumer.stop()
+        raise
+
     logger.info(
         "Kafka consumer started on %s (topic: %s, group: %s)",
         settings.kafka_bootstrap_servers,
@@ -54,7 +63,10 @@ async def consume_events() -> None:
                 except Exception as exc:
                     logger.error("Failed to generate commentary for %s: %s", event.id, exc)
                     commentary = f"{event.minute}' {event.player_name} ({event.team}) — {event.event_type} (xG: {xg:.2f})" 
-                    
+
+                match_commentary = MatchCommentary.from_event(event, xg, commentary)
+                await producer.publish(match_commentary)
+
                 logger.info(
                     "\n[%s] %d' %s (%s) | xG: %.4f\n🎙️  %s",
                     event.match_id,
@@ -78,4 +90,5 @@ async def consume_events() -> None:
         raise
     finally:
         await consumer.stop()
-        logger.info("Kafka consumer stopped cleanly.")
+        await producer.stop()
+        logger.info("Kafka consumer and producer stopped cleanly.")

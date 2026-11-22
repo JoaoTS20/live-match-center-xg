@@ -1,3 +1,11 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
 .container {
   max-width: 780px;
   margin: 2rem auto;
@@ -7,6 +15,26 @@
 
 h1 {
   margin-bottom: 1.25rem;
+}
+
+.voice-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.secondary {
+  padding: 0.45rem 0.85rem;
+  background: #f4f4f5;
+  color: #111;
+  border: 1px solid #d4d4d8;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.secondary:hover {
+  background: #e4e4e7;
 }
 
 .status {

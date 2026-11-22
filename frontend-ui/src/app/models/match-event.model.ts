@@ -17,3 +17,10 @@ export interface MatchEventRequest {
   x: number;
   y: number;
 }
+
+// Enriched event streamed back via SSE after narrator-worker computes xG & commentary
+export interface MatchCommentary extends MatchEventRequest {
+  xg: number;
+  commentary: string;
+}
+
