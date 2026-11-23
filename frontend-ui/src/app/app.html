@@ -1,0 +1,30 @@
+<main class="container">
+  <header class="header">
+    <h1>Live Match Center</h1>
+    <div class="voice-controls">
+      <button type="button" class="secondary" (click)="testVoice()">
+        Test Voice
+      </button>
+      <button type="button" class="secondary" (click)="voiceService.toggle()">
+        {{ voiceService.enabled() ? 'Voice: ON' : 'Voice: MUTED' }}
+      </button>
+    </div>
+  </header>
+
+  <app-event-controls
+    [coordinates]="coordinates()"
+    [sending]="sending()"
+    (eventSubmit)="onEventSubmit($event)"
+  />
+
+  <app-pitch
+    [coordinates]="coordinates()"
+    (coordinatesChange)="onCoordinatesChange($event)"
+  />
+
+  @if (statusMessage()) {
+    <p class="status">{{ statusMessage() }}</p>
+  }
+
+  <app-commentary-feed [items]="commentaryFeed()" />
+</main>

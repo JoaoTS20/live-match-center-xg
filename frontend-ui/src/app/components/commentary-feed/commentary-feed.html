@@ -1,0 +1,21 @@
+<section class="feed">
+  <h2>Live AI Commentary</h2>
+
+  <ul class="feed-list">
+    @for (item of items(); track $index) {
+      <li class="feed-card">
+        <div class="meta">
+          <span class="minute">{{ item.minute }}'</span>
+          <span class="badge">{{ item.eventType }}</span>
+          <span class="player">{{ item.playerName }} ({{ item.team }})</span>
+          <span class="xg">xG {{ (item.xg ?? 0).toFixed(2) }}</span>
+        </div>
+        <p class="text">{{ item.commentary }}</p>
+      </li>
+    } @empty {
+      <li class="empty">
+        No commentary yet. Click the pitch and send an event to trigger the narrator.
+      </li>
+    }
+  </ul>
+</section>

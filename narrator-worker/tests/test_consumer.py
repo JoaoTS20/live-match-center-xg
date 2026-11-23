@@ -1,82 +1,102 @@
+import asyncio
+from datetime import datetime, timezone
 import json
-import logging
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 from app.kafka.consumer import consume_events
+from app.schemas.event import MatchCommentary
 
 
 class FakeKafkaConsumer:
-    def __init__(self, messages):
+    def __init__(self, messages: list[SimpleNamespace]) -> None:
         self._messages = messages
-        self.started = False
-        self.stopped = False
-
-    async def start(self):
-        self.started = True
-
-    async def stop(self):
-        self.stopped = True
+        self.start = AsyncMock()
+        self.stop = AsyncMock()
 
     def __aiter__(self):
-        return self._iterate()
+        self._iter = iter(self._messages)
+        return self
 
-    async def _iterate(self):
-        for msg in self._messages:
-            yield msg
+    async def __anext__(self):
+        try:
+            return next(self._iter)
+        except StopIteration:
+            raise StopAsyncIteration
 
 
-@pytest.mark.asyncio
-async def test_consume_events_processes_shots_and_skips_invalid(caplog):
-    shot_payload = json.dumps(
-        {
-            "id": "550e8400-e29b-41d4-a716-446655440000",
-            "matchId": "benfica-vs-porto-2026",
-            "team": "Benfica",
-            "playerName": "Pavlidis",
-            "eventType": "SHOT",
-            "x": 88.5,
-            "y": 48.0,
-            "minute": 64,
-            "createdAt": "2026-11-21T20:00:00Z",
-        }
-    ).encode("utf-8")
+def _event_bytes(event_type: str = "SHOT") -> bytes:
+    return json.dumps({
+        "id": str(uuid4()),
+        "matchId": "sporting-vs-braga-2026",
+        "team": "Sporting",
+        "playerName": "Trincao",
+        "eventType": event_type,
+        "x": 91.5,
+        "y": 52.0,
+        "minute": 72,
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+    }).encode("utf-8")
 
-    pass_payload = json.dumps(
-        {
-            "id": "550e8400-e29b-41d4-a716-446655440001",
-            "matchId": "benfica-vs-porto-2026",
-            "team": "Benfica",
-            "playerName": "Sudakov",
-            "eventType": "PASS",
-            "x": 55.0,
-            "y": 40.0,
-            "minute": 63,
-            "createdAt": "2026-11-21T19:59:00Z",
-        }
-    ).encode("utf-8")
 
-    messages = [
+def test_consume_events_publishes_only_shots_and_goals(monkeypatch) -> None:
+    fake_consumer = FakeKafkaConsumer([
         SimpleNamespace(value=None),
-        SimpleNamespace(value=b"not-valid-json"),
-        SimpleNamespace(value=pass_payload),
-        SimpleNamespace(value=shot_payload),
-    ]
-    fake_consumer = FakeKafkaConsumer(messages)
-    mock_narrator = AsyncMock(return_value="Pavlidis fires from inside the box!")
+        SimpleNamespace(value=b"{invalid-json"),
+        SimpleNamespace(value=_event_bytes("PASS")),
+        SimpleNamespace(value=_event_bytes("SHOT")),
+    ])
+    fake_producer = AsyncMock()
 
-    with (
-        patch("app.kafka.consumer.AIOKafkaConsumer", return_value=fake_consumer),
-        patch("app.kafka.consumer.generate_commentary", mock_narrator),
-        caplog.at_level(logging.DEBUG, logger="narrator-worker"),
-    ):
-        await consume_events()
+    monkeypatch.setattr(
+        "app.kafka.consumer.AIOKafkaConsumer",
+        MagicMock(return_value=fake_consumer),
+    )
+    monkeypatch.setattr(
+        "app.kafka.consumer.CommentaryProducer",
+        MagicMock(return_value=fake_producer),
+    )
+    monkeypatch.setattr(
+        "app.kafka.consumer.generate_commentary",
+        AsyncMock(return_value="Trincao fires just wide!"),
+    )
 
-    assert fake_consumer.started is True
-    assert fake_consumer.stopped is True
-    mock_narrator.assert_awaited_once()
-    assert "Skipping invalid message" in caplog.text
-    assert "Ignored non-shot event" in caplog.text
-    assert "Pavlidis fires from inside the box!" in caplog.text
+    asyncio.run(consume_events())
+
+    fake_producer.start.assert_awaited_once()
+    fake_consumer.start.assert_awaited_once()
+    fake_producer.publish.assert_awaited_once()
+
+    published = fake_producer.publish.call_args.args[0]
+    assert isinstance(published, MatchCommentary)
+    assert published.commentary == "Trincao fires just wide!"
+    assert 0.0 < published.xg <= 1.0
+
+    fake_consumer.stop.assert_awaited_once()
+    fake_producer.stop.assert_awaited_once()
+
+
+def test_consume_events_publishes_fallback_on_narrator_error(monkeypatch) -> None:
+    fake_consumer = FakeKafkaConsumer([SimpleNamespace(value=_event_bytes("GOAL"))])
+    fake_producer = AsyncMock()
+
+    monkeypatch.setattr(
+        "app.kafka.consumer.AIOKafkaConsumer",
+        MagicMock(return_value=fake_consumer),
+    )
+    monkeypatch.setattr(
+        "app.kafka.consumer.CommentaryProducer",
+        MagicMock(return_value=fake_producer),
+    )
+    monkeypatch.setattr(
+        "app.kafka.consumer.generate_commentary",
+        AsyncMock(side_effect=RuntimeError("Gemini timeout")),
+    )
+
+    asyncio.run(consume_events())
+
+    fake_producer.publish.assert_awaited_once()
+    published = fake_producer.publish.call_args.args[0]
+    assert "72' Trincao (Sporting)" in published.commentary
+    assert "GOAL" in published.commentary
