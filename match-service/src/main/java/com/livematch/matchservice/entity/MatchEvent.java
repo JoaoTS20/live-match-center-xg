@@ -7,7 +7,13 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(name = "match_events")
+@Table(
+        name = "match_events",
+        indexes = @Index(
+                name = "idx_match_events_timeline",
+                columnList = "match_id, minute, created_at"
+        )
+)
 public class MatchEvent {
 
     @Id

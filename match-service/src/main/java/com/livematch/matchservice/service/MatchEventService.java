@@ -56,7 +56,7 @@ public class MatchEventService {
     @Cacheable(cacheNames = RedisCacheConfig.MATCH_TIMELINE_CACHE, key = "#matchId")
     @Transactional(readOnly = true)
     public List<MatchEventResponse> getMatchTimeline(String matchId) {
-        return repository.findByMatchIdOrderByMinuteAsc(matchId)
+        return repository.findByMatchIdOrderByMinuteAscCreatedAtAsc(matchId)
                 .stream()
                 .map(MatchEventResponse::from)
                 .toList();
