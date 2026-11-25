@@ -5,16 +5,23 @@ from google.genai import types
 
 from app.core.config import settings
 from app.schemas.event import MatchEvent
+from functools import lru_cache
 
 logger = logging.getLogger("narrator-worker")
 
 SYSTEM_INSTRUCTION = (
     "You are an energetic live football commentator. "
     "First, use the get_match_history tool to check what has happened earlier in this match. "
+    "Note that the returned timeline includes the current event as the latest entry—treat only "
+    "earlier entries as prior match history so you never double-count the current action. "
     "Then write 1-2 punchy sentences of live commentary referencing the xG and any relevant "
     "match context (such as prior shots, goals, or team momentum). "
     "If match history is unavailable, narrate the current event without guessing earlier events."
 )
+
+@lru_cache(maxsize=1)
+def _get_genai_client(api_key: str) -> genai.Client:
+    return genai.Client(api_key=api_key)
 
 async def get_match_history(match_id: str) -> dict:
     """
@@ -45,7 +52,7 @@ async def generate_commentary(event: MatchEvent, xg: float) -> str:
             f"fires a {event.event_type} (xG: {xg:.2f})!"
         )
 
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = _get_genai_client(settings.gemini_api_key)
 
     prompt = (
         f"A new event just happened in match '{event.match_id}':\n"

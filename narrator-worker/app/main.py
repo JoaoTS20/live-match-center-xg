@@ -16,6 +16,7 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     consumer_task = asyncio.create_task(consume_events())
+    app.state.consumer_task = consumer_task
     yield
     consumer_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
