@@ -1,5 +1,5 @@
 // Union type: works like a lightweight Java Enum for allowed values
-export type MatchEventType = 'SHOT' | 'GOAL' | 'PASS' | 'FOUL';
+export type MatchEventType = 'SHOT' | 'GOAL' | 'PASS' | 'FOUL' | 'SAVE';
 
 // Represents a clicked spot on the 2D pitch (0 to 100 on both axes)
 export interface PitchCoordinates {

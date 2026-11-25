@@ -1,6 +1,6 @@
 import { Injectable, NgZone, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, retry } from 'rxjs';
 import { MatchEventRequest, MatchCommentary } from '../models/match-event.model';
 
 @Injectable({
@@ -27,19 +27,30 @@ export class MatchEventService {
 
       eventSource.onmessage = (event) => {
         this.ngZone.run(() => {
-          const data: MatchCommentary = JSON.parse(event.data);
-          subscriber.next(data);
+          try {
+            const data: MatchCommentary = JSON.parse(event.data);
+            subscriber.next(data);
+          } catch (err) {
+            console.warn('Skipping malformed SSE payload:', err);
+          }
         });
       };
 
-      eventSource.onerror = (error) => {
-        // EventSource automatically reconnects on temporary drops,
-        // so we log instead of terminating the Observable with subscriber.error()
-        console.warn('SSE stream waiting for backend / reconnecting...', error);
-      };
+      eventSource.onerror = (err) => {
+        this.ngZone.run(() => {
+          if (eventSource.readyState === EventSource.CLOSED) {
+            subscriber.error(err);
+          } else {
+            // Native EventSource automatically reconnects after transient drops or RollingUpdates
+            console.warn('SSE connection interrupted; waiting for automatic reconnect...');
+          }
+        });
+      };      
 
       // Cleanup: closes the browser SSE connection on unsubscribe
       return () => eventSource.close();
-    });
+    }).pipe(
+      retry({ delay: 3000 })
+    );
   }
 }
