@@ -1,6 +1,6 @@
 # Live Match Center (xG & AI Commentary Engine)
 
-[![CI/CD Pipeline](https://github.com/<JoaoTS20>/<live-match-center-xg>/actions/workflows/ci.yml/badge.svg)](https://github.com/<JoaoTS20>/<live-match-center-xg>/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/JoaoTS20/live-match-center-xg/actions/workflows/ci.yml/badge.svg)](https://github.com/JoaoTS20/live-match-center-xg/actions/workflows/ci.yml)
 
 An event-driven football telemetry platform that ingests live pitch events, calculates Expected Goals (xG) in real time, generates context-aware AI play-by-play commentary using match history, and streams updates to connected browsers over Server-Sent Events (SSE).
 
@@ -15,7 +15,7 @@ flowchart LR
 
     MatchService -->|1. Persist| Postgres[("PostgreSQL 16")]
     MatchService -->|2. Evict / 4. Cache-Aside| Redis[("Redis 7")]
-    MatchService -->|3. Publish match-events| Kafka[["Apache Kafka (KRaft)"]]
+    MatchService -->|3. Publish match-events| Kafka[["Apache Kafka"]]
 
     Kafka -->|Consume match-events| Narrator["narrator-worker (FastAPI :8001)"]
     Narrator -->|Tool Call: GET timeline| MatchService
@@ -38,12 +38,12 @@ flowchart LR
 
 | Component | Technology | Responsibility |
 | :--- | :--- | :--- |
-| **`frontend-ui`** | Angular, RxJS, Nginx (unprivileged) | Interactive football pitch, event submission, reverse proxy, auto-reconnecting SSE feed |
+| **`frontend-ui`** | Angular, RxJS, Nginx | Interactive football pitch, event submission, reverse proxy, auto-reconnecting SSE feed |
 | **`match-service`** | Java, Spring Boot, JPA, Spring Cache, Actuator | Event ingestion API, PostgreSQL persistence, Redis cache management, Kafka producer & SSE fan-out |
 | **`narrator-worker`** | Python, FastAPI, `aiokafka`, `httpx`, `google-genai` | Async Kafka worker, xG calculation, LLM tool-calling commentary agent, consumer-aware health probe |
 | **Database** | PostgreSQL 16 | System of record for match timelines (`StatefulSet` + Persistent Volume in Kubernetes) |
 | **Cache** | Redis 7 | Cache-Aside layer for fast timeline lookups with graceful DB fallback on outages |
-| **Message Broker** | Apache Kafka 3.9 (KRaft) | Decoupled event streaming (`match-events` and `match-commentary` topics) |
+| **Message Broker** | Apache Kafka 3.9 | Decoupled event streaming (`match-events` and `match-commentary` topics) |
 | **Orchestration** | Docker Compose & Kubernetes | Local multi-container dev stack and production-style K8s manifests (`live-match-center`) |
 
 ---
