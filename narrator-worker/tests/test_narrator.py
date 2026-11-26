@@ -6,6 +6,7 @@ import pytest
 
 from app.schemas.event import MatchEvent
 from app.services.narrator import generate_commentary, get_match_history
+from app.services.narrator import _get_genai_client
 
 
 def _sample_event() -> MatchEvent:
@@ -84,3 +85,9 @@ async def test_generate_commentary_calls_gemini_async_when_api_key_present(monke
 
     assert result == "What a strike by Pavlidis! High xG chance at 0.32!"
     mock_chat.send_message.assert_awaited_once()
+
+@pytest.fixture(autouse=True)
+def clear_genai_client_cache():
+    _get_genai_client.cache_clear()
+    yield
+    _get_genai_client.cache_clear()

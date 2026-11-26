@@ -234,3 +234,5 @@ node_modules/
 dist/
 .angular/
 
+# k8s
+k8s/01-secrets.yaml

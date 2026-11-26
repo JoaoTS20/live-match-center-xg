@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: live-match-center
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: live-match-center
+data:
+  # PostgreSQL
+  POSTGRES_DB: matchdb
+  POSTGRES_USER: matchuser
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/matchdb
+  SPRING_DATASOURCE_USERNAME: matchuser
+
+  # Redis
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: "6379"
+
+  # Kafka (single internal listener inside Kubernetes)
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_TOPIC: match-events
+  KAFKA_COMMENTARY_TOPIC: match-commentary
+
+  # Internal Service-to-Service URL
+  MATCH_SERVICE_URL: http://match-service:8080

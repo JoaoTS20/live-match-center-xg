@@ -38,6 +38,17 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+  redis:
+    image: redis:7-alpine
+    container_name: match-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
   match-service:
     build:
       context: ./match-service
@@ -51,10 +62,14 @@ services:
       SPRING_DATASOURCE_USERNAME: matchuser
       SPRING_DATASOURCE_PASSWORD: matchpass
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
@@ -63,7 +78,6 @@ services:
       retries: 10
       start_period: 25s
     restart: unless-stopped
-
   narrator-worker:
     build:
       context: ./narrator-worker

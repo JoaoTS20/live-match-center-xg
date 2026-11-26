@@ -13,7 +13,7 @@ import { CommentaryFeedComponent } from './components/commentary-feed/commentary
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
-export class App {
+export class App implements OnInit, OnDestroy {
   private readonly eventService = inject(MatchEventService);
   protected readonly voiceService = inject(VoiceService);
 

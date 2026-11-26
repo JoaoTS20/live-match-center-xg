@@ -1,6 +1,7 @@
 package com.livematch.matchservice.service;
 
 import com.livematch.matchservice.dto.MatchCommentaryEvent;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -86,5 +87,16 @@ public class CommentaryStreamService {
                 emittersByMatch.remove(matchId, emitters);
             }
         }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        log.info("Shutting down SSE streams for {} active matches", emittersByMatch.size());
+        emittersByMatch.forEach((matchId, emitters) -> {
+            for (SseEmitter emitter : emitters) {
+                emitter.complete();
+            }
+        });
+        emittersByMatch.clear();
     }
 }
